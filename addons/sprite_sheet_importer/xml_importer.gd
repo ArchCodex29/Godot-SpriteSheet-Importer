@@ -56,7 +56,8 @@ func _execute(pngPath:String, xmlPath:String, gen_files:Array[String]):
 			})
 
 	var src = Image.new()
-	src.load(pngPath)
+	var bytes = FileAccess.get_file_as_bytes(pngPath)
+	src.load_png_from_buffer(bytes)
 
 	var cell_w = 0
 	var cell_h = 0
@@ -100,9 +101,14 @@ func _execute(pngPath:String, xmlPath:String, gen_files:Array[String]):
 	# FIX 5: globalize res:// path so save_png works even in read-only project dirs
 	var output_path = pngPath.get_basename()
 	# todo: maybe create sub folder
-	#var abs_output =  output_path + "_repacked.png"
-	#atlas.save_png(abs_output)
-	#gen_files.append(abs_output)
+	var abs_output =  output_path + "_repacked.png"
+	gen_files.append(abs_output)
+	atlas.save_png(abs_output)
+	_write_default_texture_import(abs_output)
+	if Engine.is_editor_hint():
+		var fs := EditorInterface.get_resource_filesystem()
+		fs.update_file(abs_output)
+	
 	#ResourceSaver.save(atlas., abs_output)
 	# FIX 4: pass cell_w / cell_h so _generate_tileset can set texture_region_size
 	_generate_tileset(atlas, regions, output_path, cell_w, cell_h)
@@ -165,3 +171,14 @@ func _generate_tileset(image: Image, regions: Array, output_path: String, cell_w
 	ResourceSaver.save(tileset, tres_path)
 	#gen_files.append(tres_path)
 	print("TileSet saved to:", tres_path)
+
+func _write_default_texture_import(png_path: String) -> void:
+	var import_path = png_path + ".import"
+	# Don't clobber a user-customized import config if it already exists.
+	if FileAccess.file_exists(import_path):
+		return
+
+	var content := "[remap]\n\nimporter=\"texture\"\ntype=\"CompressedTexture2D\"\n"
+	var f = FileAccess.open(import_path, FileAccess.WRITE)
+	if f:
+		f.store_string(content)
