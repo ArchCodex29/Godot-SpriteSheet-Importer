@@ -1,7 +1,7 @@
 @tool
 extends EditorPlugin
 
-const Importer = preload("res://addons/sprite_sheet_importer/sample_importer.gd")
+const Importer = preload("res://addons/sprite_sheet_importer/xml_importer.gd")
 var inspector_plugin: EditorImportPlugin = Importer.new()
 
 func _enable_plugin() -> void:
