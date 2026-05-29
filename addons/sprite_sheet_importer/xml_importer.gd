@@ -98,9 +98,7 @@ func _execute(pngPath:String, xmlPath:String, gen_files:Array[String]):
 			"size": Vector2i(s.w, s.h)
 		})
 
-	# FIX 5: globalize res:// path so save_png works even in read-only project dirs
 	var output_path = pngPath.get_basename()
-	# todo: maybe create sub folder
 	var abs_output =  output_path + "_repacked.png"
 	gen_files.append(abs_output)
 	atlas.save_png(abs_output)
@@ -109,64 +107,34 @@ func _execute(pngPath:String, xmlPath:String, gen_files:Array[String]):
 		var fs := EditorInterface.get_resource_filesystem()
 		fs.update_file(abs_output)
 	
-	#ResourceSaver.save(atlas., abs_output)
-	# FIX 4: pass cell_w / cell_h so _generate_tileset can set texture_region_size
 	_generate_tileset(atlas, regions, output_path, cell_w, cell_h)
 
 	print("Done")
-	#quit(0)
 
-# FIX 4: added cell_w and cell_h parameters
 func _generate_tileset(image: Image, regions: Array, output_path: String, cell_w: int, cell_h: int):
-
 	var texture = ImageTexture.create_from_image(image)
-
 	var tileset = TileSet.new()
 	var source = TileSetAtlasSource.new()
 
 	source.texture = texture
-
-	# FIX 1: set texture_region_size so the atlas source knows each cell's pixel size.
-	# This replaces the non-existent set_texture_region() per-tile calls — Godot 4
-	# derives every tile's pixel rect automatically from (atlas_coords * texture_region_size).
 	source.texture_region_size = Vector2i(cell_w, cell_h)
-
 	tileset.add_source(source, 0)
-
-	# FIX 3: use the actual repacked cell dimensions, not a guess based on tile_w / 2.
-	# Adjust tile_size here if your isometric grid uses a different logical size.
 
 	# TODO : input prop to ask tile shape and act accordingly
 	# for now, assume isometric
 	tileset.tile_size = Vector2i(cell_w, cell_h / 2)
 	tileset.tile_shape = TileSet.TileShape.TILE_SHAPE_ISOMETRIC
 
-	# --- create tiles ---
 	for r in regions:
 		var coords = r.coords
-
 		source.create_tile(coords)
-
-		# FIX 1 (cont): removed source.set_texture_region() — not needed, handled by
-		# texture_region_size above.
-
-		# FIX 2: texture_origin lives on TileData, not on the source itself.
-		# get_tile_data(atlas_coords, alternative_tile_index) returns the TileData object.
 		var tile_data: TileData = source.get_tile_data(coords, 0)
-
-		# Compensate for the bottom-center padding baked in during atlas packing,
-		# so the tile's anchor sits at the visual bottom-center of the sprite.
-		# tile_data.texture_origin = Vector2i(
-		# 	(r.size.x - cell_w) / 2,  # undo horizontal centering offset
-		# 	r.size.y - cell_h          # undo vertical bottom-align offset
-		# )
 
 		tile_data.texture_origin = Vector2i(
 			0,
 			0
 		)
 
-	# --- save ---
 	var tres_path = output_path + ".tres"
 	ResourceSaver.save(tileset, tres_path)
 	#gen_files.append(tres_path)
